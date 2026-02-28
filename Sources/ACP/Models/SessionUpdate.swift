@@ -36,16 +36,35 @@ public enum SessionUpdate: Hashable, Sendable {
 
 extension SessionUpdate {
     /// Parse a session update from raw JSON-RPC notification data.
-    /// Handles both full notification envelope (`{jsonrpc, method, params: {...}}`)
-    /// and direct params data (`{sessionId, sessionUpdate, ...}`).
+    /// Handles both:
+    /// 1. Copilot CLI format: `{params: {sessionId, update: {sessionUpdate, ...}}}`
+    /// 2. Flat format: `{params: {sessionId, sessionUpdate, ...}}`
+    /// 3. Direct params without envelope
     public static func parse(from data: Data) throws -> (sessionId: String, update: SessionUpdate) {
         let decoder = JSONDecoder()
 
-        // Try as notification envelope first
-        struct NotificationEnvelope: Codable {
+        // Try Copilot CLI format: params.update is a nested object
+        struct NestedEnvelope: Codable {
+            struct Params: Codable {
+                let sessionId: String
+                let update: RawSessionUpdate
+            }
+            let params: Params?
+        }
+        if let envelope = try? decoder.decode(NestedEnvelope.self, from: data),
+           let params = envelope.params {
+            var raw = params.update
+            // Inject sessionId from outer params into the raw update
+            raw.sessionId = params.sessionId
+            let update = try raw.toTyped()
+            return (params.sessionId, update)
+        }
+
+        // Try flat format: params contains sessionId + sessionUpdate at same level
+        struct FlatEnvelope: Codable {
             let params: RawSessionUpdate?
         }
-        if let envelope = try? decoder.decode(NotificationEnvelope.self, from: data),
+        if let envelope = try? decoder.decode(FlatEnvelope.self, from: data),
            let raw = envelope.params {
             let update = try raw.toTyped()
             return (raw.sessionId, update)
@@ -67,11 +86,11 @@ extension SessionUpdate {
 
 // MARK: - Raw Session Update (for decoding)
 
-struct RawSessionUpdate: Codable, Sendable {
-    let sessionId: String
+struct RawSessionUpdate: Sendable {
+    var sessionId: String
     let sessionUpdate: String
 
-    // Agent message chunk
+    // Agent message chunk — handles both single ContentBlock and array
     let content: [ContentBlock]?
     let delta: String?
 
@@ -101,6 +120,42 @@ struct RawSessionUpdate: Codable, Sendable {
     let used: Int?
     let size: Int?
     let cost: UsageCost?
+}
+
+extension RawSessionUpdate: Codable {
+    private enum CodingKeys: String, CodingKey {
+        case sessionId, sessionUpdate, content, delta, thought
+        case toolCall, toolCallUpdate, entries, availableCommands
+        case currentMode, modes, configOptions, used, size, cost
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        sessionId = try container.decodeIfPresent(String.self, forKey: .sessionId) ?? ""
+        sessionUpdate = try container.decode(String.self, forKey: .sessionUpdate)
+
+        // content can be a single ContentBlock or an array — handle both
+        if let array = try? container.decodeIfPresent([ContentBlock].self, forKey: .content) {
+            content = array
+        } else if let single = try? container.decodeIfPresent(ContentBlock.self, forKey: .content) {
+            content = [single]
+        } else {
+            content = nil
+        }
+
+        delta = try container.decodeIfPresent(String.self, forKey: .delta)
+        thought = try container.decodeIfPresent(String.self, forKey: .thought)
+        toolCall = try container.decodeIfPresent(ToolCall.self, forKey: .toolCall)
+        toolCallUpdate = try container.decodeIfPresent(ToolCallUpdate.self, forKey: .toolCallUpdate)
+        entries = try container.decodeIfPresent([PlanEntry].self, forKey: .entries)
+        availableCommands = try container.decodeIfPresent([AvailableCommand].self, forKey: .availableCommands)
+        currentMode = try container.decodeIfPresent(String.self, forKey: .currentMode)
+        modes = try container.decodeIfPresent([SessionMode].self, forKey: .modes)
+        configOptions = try container.decodeIfPresent([ConfigOption].self, forKey: .configOptions)
+        used = try container.decodeIfPresent(Int.self, forKey: .used)
+        size = try container.decodeIfPresent(Int.self, forKey: .size)
+        cost = try container.decodeIfPresent(UsageCost.self, forKey: .cost)
+    }
 
     func toTyped() throws -> SessionUpdate {
         switch sessionUpdate {

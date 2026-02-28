@@ -119,13 +119,13 @@ public actor ACPClient {
     // MARK: - High-Level Methods
 
     /// Create a new session.
-    public func newSession(cwd: String? = nil, mcpServers: [MCPServerConfig]? = nil) async throws -> SessionNew.Result {
+    public func newSession(cwd: String? = nil, mcpServers: [MCPServerConfig] = []) async throws -> SessionNew.Result {
         let params = SessionNew.Parameters(cwd: cwd, mcpServers: mcpServers)
         let result: SessionNew.Result = try await sendRequest(method: SessionNew.name, params: params)
         currentSessionId = result.sessionId
         if let opts = result.configOptions { configOptions = opts }
-        if let m = result.modes { modes = m }
-        currentMode = result.currentMode
+        if let m = result.modes?.availableModes { modes = m }
+        currentMode = result.modes?.currentModeId
         logger.info("Session created: \(result.sessionId)")
         return result
     }
@@ -136,8 +136,8 @@ public actor ACPClient {
         let result: SessionLoad.Result = try await sendRequest(method: SessionLoad.name, params: params)
         currentSessionId = result.sessionId
         if let opts = result.configOptions { configOptions = opts }
-        if let m = result.modes { modes = m }
-        currentMode = result.currentMode
+        if let m = result.modes?.availableModes { modes = m }
+        currentMode = result.modes?.currentModeId
         logger.info("Session loaded: \(result.sessionId)")
         return result
     }

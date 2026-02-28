@@ -108,9 +108,9 @@ public enum SessionNew: ACPMethod {
 
     public struct Parameters: Codable, Hashable, Sendable {
         public let cwd: String?
-        public let mcpServers: [MCPServerConfig]?
+        public let mcpServers: [MCPServerConfig]
 
-        public init(cwd: String? = nil, mcpServers: [MCPServerConfig]? = nil) {
+        public init(cwd: String? = nil, mcpServers: [MCPServerConfig] = []) {
             self.cwd = cwd
             self.mcpServers = mcpServers
         }
@@ -118,8 +118,11 @@ public enum SessionNew: ACPMethod {
 
     public struct Result: Codable, Hashable, Sendable {
         public let sessionId: String
-        public let modes: [SessionMode]?
-        public let currentMode: String?
+        /// Nested modes object from Copilot CLI (modes.availableModes, modes.currentModeId)
+        public let modes: ModesInfo?
+        /// Nested models object from Copilot CLI (models.availableModels, models.currentModelId)
+        public let models: ModelsInfo?
+        /// Flat config options array (ACP spec format)
         public let configOptions: [ConfigOption]?
     }
 }
@@ -141,8 +144,8 @@ public enum SessionLoad: ACPMethod {
 
     public struct Result: Codable, Hashable, Sendable {
         public let sessionId: String
-        public let modes: [SessionMode]?
-        public let currentMode: String?
+        public let modes: ModesInfo?
+        public let models: ModelsInfo?
         public let configOptions: [ConfigOption]?
     }
 }
@@ -315,10 +318,56 @@ public enum StopReason: String, Codable, Hashable, Sendable {
 
 // MARK: - Session Mode
 
-public struct SessionMode: Codable, Hashable, Sendable {
-    public let slug: String
+public struct SessionMode: Codable, Hashable, Sendable, Identifiable {
+    public let id: String
     public let name: String?
     public let description: String?
+
+    private enum CodingKeys: String, CodingKey {
+        case id, slug, name, description
+    }
+
+    public init(id: String, name: String? = nil, description: String? = nil) {
+        self.id = id
+        self.name = name
+        self.description = description
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.id = try container.decodeIfPresent(String.self, forKey: .id)
+            ?? container.decode(String.self, forKey: .slug)
+        self.name = try container.decodeIfPresent(String.self, forKey: .name)
+        self.description = try container.decodeIfPresent(String.self, forKey: .description)
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id, forKey: .id)
+        try container.encodeIfPresent(name, forKey: .name)
+        try container.encodeIfPresent(description, forKey: .description)
+    }
+}
+
+// MARK: - Models Info (Copilot CLI response format)
+
+public struct ModelsInfo: Codable, Hashable, Sendable {
+    public let availableModels: [ModelInfo]?
+    public let currentModelId: String?
+}
+
+public struct ModelInfo: Codable, Hashable, Sendable, Identifiable {
+    public var id: String { modelId }
+    public let modelId: String
+    public let name: String?
+    public let description: String?
+}
+
+// MARK: - Modes Info (Copilot CLI response format)
+
+public struct ModesInfo: Codable, Hashable, Sendable {
+    public let availableModes: [SessionMode]?
+    public let currentModeId: String?
 }
 
 // MARK: - Config Options

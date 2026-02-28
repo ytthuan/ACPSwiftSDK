@@ -63,8 +63,10 @@ struct EndToEndTests {
             case "session/new":
                 let result: Value = [
                     "sessionId": "mock_session_001",
-                    "modes": [["slug": "agent", "name": "Agent"], ["slug": "ask", "name": "Ask"]],
-                    "currentMode": "agent"
+                    "modes": [
+                        "availableModes": [["id": "agent", "name": "Agent"], ["id": "ask", "name": "Ask"]],
+                        "currentModeId": "agent"
+                    ]
                 ]
                 let response = JSONRPCResponse(id: id, result: result)
                 if let encoded = try? codec.encode(response) {
