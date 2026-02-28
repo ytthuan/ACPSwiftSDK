@@ -169,9 +169,20 @@ extension RawSessionUpdate: Codable {
                 content: content,
                 delta: delta
             ))
-        case "thought_message_chunk":
+        case "thought_message_chunk", "agent_thought_chunk":
+            // CLI sends content as ContentBlock, extract text from it
+            let thoughtText: String
+            if let t = thought {
+                thoughtText = t
+            } else if let d = delta {
+                thoughtText = d
+            } else if let blocks = content, let first = blocks.first, case .text(let t) = first {
+                thoughtText = t.text
+            } else {
+                thoughtText = ""
+            }
             return .thoughtMessageChunk(ThoughtMessageChunk(
-                thought: thought ?? delta ?? ""
+                thought: thoughtText
             ))
         case "tool_call":
             if let tc = toolCall {
