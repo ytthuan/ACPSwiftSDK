@@ -356,8 +356,11 @@ public actor ACPClient {
                     id: id,
                     error: JSONRPCError.internalError(error.localizedDescription)
                 )
-                if let data = try? codec.encode(errResponse) {
-                    try? await transport?.send(data)
+                do {
+                    let data = try codec.encode(errResponse)
+                    try await transport?.send(data)
+                } catch {
+                    logger.error("Failed to send error response: \(error)")
                 }
             }
         } else {
@@ -366,8 +369,11 @@ public actor ACPClient {
                 id: id,
                 error: JSONRPCError.methodNotFound(method)
             )
-            if let data = try? codec.encode(errResponse) {
-                try? await transport?.send(data)
+            do {
+                let data = try codec.encode(errResponse)
+                try await transport?.send(data)
+            } catch {
+                logger.error("Failed to send error response: \(error)")
             }
         }
     }

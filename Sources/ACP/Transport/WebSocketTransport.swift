@@ -166,11 +166,10 @@ public actor WebSocketTransport: ACPTransport {
             while !Task.isCancelled {
                 try? await Task.sleep(for: .seconds(self.configuration.heartbeatInterval))
                 guard let task = self.webSocketTask else { break }
-                task.sendPing { error in
+                task.sendPing { [weak task] error in
+                    _ = task // suppress unused capture warning
                     if let error {
-                        Task {
-                            await self.handleReceiveError(error)
-                        }
+                        Task { await self.handleReceiveError(error) }
                     }
                 }
             }
