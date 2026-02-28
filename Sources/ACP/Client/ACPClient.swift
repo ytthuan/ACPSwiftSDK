@@ -65,6 +65,12 @@ public actor ACPClient {
     public var sessionModes: [SessionMode] { modes }
     public var sessionCurrentMode: String? { currentMode }
 
+    /// Switch the active session without making a network call.
+    /// Use this when navigating between previously-created sessions.
+    public func setActiveSession(_ sessionId: String) {
+        currentSessionId = sessionId
+    }
+
     // MARK: - Connect
 
     /// Connect to an ACP agent via the given transport.
