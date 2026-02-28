@@ -78,7 +78,7 @@ public actor ACPClient {
 
         // Send initialize request
         let params = Initialize.Parameters(
-            protocolVersion: "1",
+            protocolVersion: 1,
             clientInfo: clientInfo,
             clientCapabilities: clientCapabilities
         )

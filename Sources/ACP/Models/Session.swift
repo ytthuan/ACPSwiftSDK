@@ -7,12 +7,12 @@ public enum Initialize: ACPMethod {
     public static let name = "initialize"
 
     public struct Parameters: Codable, Hashable, Sendable {
-        public let protocolVersion: String
+        public let protocolVersion: Int
         public let clientInfo: ClientInfo
         public let clientCapabilities: ClientCapabilities?
 
         public init(
-            protocolVersion: String = "1",
+            protocolVersion: Int = 1,
             clientInfo: ClientInfo,
             clientCapabilities: ClientCapabilities? = nil
         ) {
@@ -23,7 +23,7 @@ public enum Initialize: ACPMethod {
     }
 
     public struct Result: Codable, Hashable, Sendable {
-        public let protocolVersion: String?
+        public let protocolVersion: Int?
         public let agentInfo: AgentInfo?
         public let agentCapabilities: AgentCapabilities?
     }

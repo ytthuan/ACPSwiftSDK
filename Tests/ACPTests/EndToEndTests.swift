@@ -51,7 +51,7 @@ struct EndToEndTests {
             switch method {
             case "initialize":
                 let result: Value = [
-                    "protocolVersion": "1",
+                    "protocolVersion": 1,
                     "agentInfo": ["name": "MockAgent", "version": "1.0"],
                     "agentCapabilities": [:]
                 ]
