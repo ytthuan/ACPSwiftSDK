@@ -202,9 +202,12 @@ public actor ACPClient {
 
     /// Register a handler for session updates.
     public func onSessionUpdate(_ handler: @escaping @Sendable (String, SessionUpdate) async -> Void) {
-        onRawNotification(SessionUpdateNotification.name) { data in
-            if let (sessionId, update) = try? SessionUpdate.parse(from: data) {
+        onRawNotification(SessionUpdateNotification.name) { [weak self] data in
+            do {
+                let (sessionId, update) = try SessionUpdate.parse(from: data)
                 await handler(sessionId, update)
+            } catch {
+                self?.logger.error("Failed to parse session update: \(error). Data: \(String(data: data.prefix(200), encoding: .utf8) ?? "?")")
             }
         }
     }
@@ -316,9 +319,10 @@ public actor ACPClient {
             } else if raw.isRequest {
                 await handleIncomingRequest(raw, data: data)
             } else if raw.isNotification {
+                logger.debug("Notification received: \(raw.method ?? "?")")
                 await handleNotification(raw, data: data)
             } else {
-                logger.warning("Unknown message format")
+                logger.warning("Unknown message format: \(String(data: data.prefix(100), encoding: .utf8) ?? "?")")
             }
         } catch {
             logger.error("Failed to decode message: \(error)")
