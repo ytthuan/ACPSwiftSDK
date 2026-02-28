@@ -1,0 +1,143 @@
+import Foundation
+
+// MARK: - Content Blocks
+
+/// A single content block within an ACP prompt or message.
+/// Matches the ACP spec's `ContentBlock` discriminated union.
+public enum ContentBlock: Hashable, Sendable {
+    case text(TextContent)
+    case image(ImageContent)
+    case audio(AudioContent)
+    case resource(ResourceContent)
+    case resourceLink(ResourceLinkContent)
+}
+
+// MARK: - Codable
+
+extension ContentBlock: Codable {
+    private enum CodingKeys: String, CodingKey {
+        case type
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        let type = try container.decode(String.self, forKey: .type)
+
+        switch type {
+        case "text":
+            self = .text(try TextContent(from: decoder))
+        case "image":
+            self = .image(try ImageContent(from: decoder))
+        case "audio":
+            self = .audio(try AudioContent(from: decoder))
+        case "resource":
+            self = .resource(try ResourceContent(from: decoder))
+        case "resource_link":
+            self = .resourceLink(try ResourceLinkContent(from: decoder))
+        default:
+            // Forward-compatible: unknown content types become text placeholders
+            self = .text(TextContent(text: "[Unknown content type: \(type)]"))
+        }
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        switch self {
+        case .text(let c): try c.encode(to: encoder)
+        case .image(let c): try c.encode(to: encoder)
+        case .audio(let c): try c.encode(to: encoder)
+        case .resource(let c): try c.encode(to: encoder)
+        case .resourceLink(let c): try c.encode(to: encoder)
+        }
+    }
+}
+
+// MARK: - Content Types
+
+public struct TextContent: Codable, Hashable, Sendable {
+    public let type: String
+    public let text: String
+
+    public init(text: String) {
+        self.type = "text"
+        self.text = text
+    }
+}
+
+public struct ImageContent: Codable, Hashable, Sendable {
+    public let type: String
+    public let data: String
+    public let mimeType: String
+
+    public init(data: String, mimeType: String) {
+        self.type = "image"
+        self.data = data
+        self.mimeType = mimeType
+    }
+}
+
+public struct AudioContent: Codable, Hashable, Sendable {
+    public let type: String
+    public let data: String
+    public let mimeType: String
+
+    public init(data: String, mimeType: String) {
+        self.type = "audio"
+        self.data = data
+        self.mimeType = mimeType
+    }
+}
+
+public struct ResourceContent: Codable, Hashable, Sendable {
+    public let type: String
+    public let resource: EmbeddedResource
+
+    public init(resource: EmbeddedResource) {
+        self.type = "resource"
+        self.resource = resource
+    }
+}
+
+public struct EmbeddedResource: Codable, Hashable, Sendable {
+    public let uri: String
+    public let mimeType: String?
+    public let text: String?
+    public let blob: String?
+
+    public init(uri: String, mimeType: String? = nil, text: String? = nil, blob: String? = nil) {
+        self.uri = uri
+        self.mimeType = mimeType
+        self.text = text
+        self.blob = blob
+    }
+}
+
+public struct ResourceLinkContent: Codable, Hashable, Sendable {
+    public let type: String
+    public let uri: String
+    public let name: String?
+    public let description: String?
+    public let mimeType: String?
+
+    public init(uri: String, name: String? = nil, description: String? = nil, mimeType: String? = nil) {
+        self.type = "resource_link"
+        self.uri = uri
+        self.name = name
+        self.description = description
+        self.mimeType = mimeType
+    }
+}
+
+// MARK: - Convenience
+
+extension ContentBlock {
+    /// Create a text content block.
+    public static func text(_ text: String) -> ContentBlock {
+        .text(TextContent(text: text))
+    }
+
+    /// Extract text content if this is a text block.
+    public var textValue: String? {
+        if case .text(let t) = self { return t.text }
+        return nil
+    }
+}
