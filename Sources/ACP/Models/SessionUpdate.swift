@@ -483,13 +483,23 @@ public enum RequestPermission: ACPMethod {
         public let toolCall: ToolCall?
     }
 
+    /// The outer result wraps the decision in an `outcome` object per ACP spec:
+    /// `{"outcome": {"outcome": "selected", "optionId": "..."}}`
     public struct Result: Codable, Hashable, Sendable {
-        public let outcome: PermissionOutcome
-        public let optionId: String?
+        public let outcome: OutcomeWrapper
+
+        public struct OutcomeWrapper: Codable, Hashable, Sendable {
+            public let outcome: PermissionOutcome
+            public let optionId: String?
+
+            public init(outcome: PermissionOutcome, optionId: String? = nil) {
+                self.outcome = outcome
+                self.optionId = optionId
+            }
+        }
 
         public init(outcome: PermissionOutcome, optionId: String? = nil) {
-            self.outcome = outcome
-            self.optionId = optionId
+            self.outcome = OutcomeWrapper(outcome: outcome, optionId: optionId)
         }
     }
 }
