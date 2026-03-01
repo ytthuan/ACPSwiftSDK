@@ -144,10 +144,12 @@ public enum SessionLoad: ACPMethod {
     public struct Parameters: Codable, Hashable, Sendable {
         public let sessionId: String
         public let cwd: String?
+        public let mcpServers: [MCPServerConfig]
 
-        public init(sessionId: String, cwd: String? = nil) {
+        public init(sessionId: String, cwd: String? = nil, mcpServers: [MCPServerConfig] = []) {
             self.sessionId = sessionId
             self.cwd = cwd
+            self.mcpServers = mcpServers
         }
     }
 

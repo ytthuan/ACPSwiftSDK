@@ -137,8 +137,8 @@ public actor ACPClient {
     }
 
     /// Load an existing session.
-    public func loadSession(sessionId: String, cwd: String? = nil) async throws -> SessionLoad.Result {
-        let params = SessionLoad.Parameters(sessionId: sessionId, cwd: cwd)
+    public func loadSession(sessionId: String, cwd: String? = nil, mcpServers: [MCPServerConfig] = []) async throws -> SessionLoad.Result {
+        let params = SessionLoad.Parameters(sessionId: sessionId, cwd: cwd, mcpServers: mcpServers)
         let result: SessionLoad.Result = try await sendRequest(method: SessionLoad.name, params: params)
         currentSessionId = result.sessionId
         if let opts = result.configOptions { configOptions = opts }
