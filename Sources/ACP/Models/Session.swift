@@ -88,11 +88,20 @@ public struct AgentCapabilities: Codable, Hashable, Sendable {
     public let loadSession: Bool?
     public let listSession: Bool?
     public let deleteSession: Bool?
+    public let sessionCapabilities: SessionCapabilities?
     public let _meta: Value?
 
     enum CodingKeys: String, CodingKey {
-        case prompt, loadSession, listSession, deleteSession, _meta
+        case prompt, loadSession, listSession, deleteSession, sessionCapabilities, _meta
     }
+}
+
+public struct SessionCapabilities: Codable, Hashable, Sendable {
+    public let list: SessionListCapability?
+    public let delete: SessionDeleteCapability?
+
+    public struct SessionListCapability: Codable, Hashable, Sendable {}
+    public struct SessionDeleteCapability: Codable, Hashable, Sendable {}
 }
 
 public struct PromptCapabilities: Codable, Hashable, Sendable {

@@ -51,15 +51,25 @@ extension ContentBlock: Codable {
     }
 }
 
+// MARK: - Annotations
+
+public struct Annotations: Codable, Hashable, Sendable {
+    public let audience: [String]?
+    public let lastModified: String?
+    public let priority: Double?
+}
+
 // MARK: - Content Types
 
 public struct TextContent: Codable, Hashable, Sendable {
     public let type: String
     public let text: String
+    public let annotations: Annotations?
 
-    public init(text: String) {
+    public init(text: String, annotations: Annotations? = nil) {
         self.type = "text"
         self.text = text
+        self.annotations = annotations
     }
 }
 
@@ -67,11 +77,13 @@ public struct ImageContent: Codable, Hashable, Sendable {
     public let type: String
     public let data: String
     public let mimeType: String
+    public let annotations: Annotations?
 
-    public init(data: String, mimeType: String) {
+    public init(data: String, mimeType: String, annotations: Annotations? = nil) {
         self.type = "image"
         self.data = data
         self.mimeType = mimeType
+        self.annotations = annotations
     }
 }
 
@@ -79,11 +91,13 @@ public struct AudioContent: Codable, Hashable, Sendable {
     public let type: String
     public let data: String
     public let mimeType: String
+    public let annotations: Annotations?
 
-    public init(data: String, mimeType: String) {
+    public init(data: String, mimeType: String, annotations: Annotations? = nil) {
         self.type = "audio"
         self.data = data
         self.mimeType = mimeType
+        self.annotations = annotations
     }
 }
 
