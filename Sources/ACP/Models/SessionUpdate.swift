@@ -145,8 +145,18 @@ extension RawSessionUpdate: Codable {
 
         delta = try container.decodeIfPresent(String.self, forKey: .delta)
         thought = try container.decodeIfPresent(String.self, forKey: .thought)
-        toolCall = try container.decodeIfPresent(ToolCall.self, forKey: .toolCall)
-        toolCallUpdate = try container.decodeIfPresent(ToolCallUpdate.self, forKey: .toolCallUpdate)
+        // Tool call: try nested "toolCall" key first, then decode flat fields
+        if let nested = try? container.decodeIfPresent(ToolCall.self, forKey: .toolCall) {
+            toolCall = nested
+        } else {
+            // CLI sends tool_call fields flat (toolCallId, title, kind, status at same level)
+            toolCall = try? ToolCall(from: decoder)
+        }
+        if let nested = try? container.decodeIfPresent(ToolCallUpdate.self, forKey: .toolCallUpdate) {
+            toolCallUpdate = nested
+        } else {
+            toolCallUpdate = try? ToolCallUpdate(from: decoder)
+        }
         entries = try container.decodeIfPresent([PlanEntry].self, forKey: .entries)
         availableCommands = try container.decodeIfPresent([AvailableCommand].self, forKey: .availableCommands)
         currentMode = try container.decodeIfPresent(String.self, forKey: .currentMode)
@@ -257,6 +267,42 @@ public struct ToolCall: Codable, Hashable, Sendable, Identifiable {
     public let content: [ToolCallContent]?
     public let locations: [ToolCallLocation]?
     public let confirmationRequest: ConfirmationRequest?
+
+    private enum CodingKeys: String, CodingKey {
+        case id, toolCallId, title, kind, status, content, locations, confirmationRequest
+    }
+
+    public init(id: String, title: String? = nil, kind: ToolKind? = nil, status: ToolCallStatus? = nil,
+                content: [ToolCallContent]? = nil, locations: [ToolCallLocation]? = nil,
+                confirmationRequest: ConfirmationRequest? = nil) {
+        self.id = id; self.title = title; self.kind = kind; self.status = status
+        self.content = content; self.locations = locations; self.confirmationRequest = confirmationRequest
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        // Accept both "id" and "toolCallId"
+        self.id = try container.decodeIfPresent(String.self, forKey: .id)
+            ?? container.decodeIfPresent(String.self, forKey: .toolCallId)
+            ?? ""
+        self.title = try container.decodeIfPresent(String.self, forKey: .title)
+        self.kind = try container.decodeIfPresent(ToolKind.self, forKey: .kind)
+        self.status = try container.decodeIfPresent(ToolCallStatus.self, forKey: .status)
+        self.content = try container.decodeIfPresent([ToolCallContent].self, forKey: .content)
+        self.locations = try container.decodeIfPresent([ToolCallLocation].self, forKey: .locations)
+        self.confirmationRequest = try container.decodeIfPresent(ConfirmationRequest.self, forKey: .confirmationRequest)
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id, forKey: .id)
+        try container.encodeIfPresent(title, forKey: .title)
+        try container.encodeIfPresent(kind, forKey: .kind)
+        try container.encodeIfPresent(status, forKey: .status)
+        try container.encodeIfPresent(content, forKey: .content)
+        try container.encodeIfPresent(locations, forKey: .locations)
+        try container.encodeIfPresent(confirmationRequest, forKey: .confirmationRequest)
+    }
 }
 
 public struct ToolCallUpdate: Codable, Hashable, Sendable {
@@ -264,6 +310,32 @@ public struct ToolCallUpdate: Codable, Hashable, Sendable {
     public let status: ToolCallStatus?
     public let content: [ToolCallContent]?
     public let title: String?
+
+    private enum CodingKeys: String, CodingKey {
+        case id, toolCallId, status, content, title
+    }
+
+    public init(id: String, status: ToolCallStatus? = nil, content: [ToolCallContent]? = nil, title: String? = nil) {
+        self.id = id; self.status = status; self.content = content; self.title = title
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.id = try container.decodeIfPresent(String.self, forKey: .id)
+            ?? container.decodeIfPresent(String.self, forKey: .toolCallId)
+            ?? ""
+        self.status = try container.decodeIfPresent(ToolCallStatus.self, forKey: .status)
+        self.content = try container.decodeIfPresent([ToolCallContent].self, forKey: .content)
+        self.title = try container.decodeIfPresent(String.self, forKey: .title)
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id, forKey: .id)
+        try container.encodeIfPresent(status, forKey: .status)
+        try container.encodeIfPresent(content, forKey: .content)
+        try container.encodeIfPresent(title, forKey: .title)
+    }
 }
 
 public enum ToolKind: String, Codable, Hashable, Sendable {
@@ -356,6 +428,7 @@ public enum RequestPermission: ACPMethod {
         public let title: String?
         public let message: String?
         public let options: [PermissionOption]
+        public let toolCall: ToolCall?
     }
 
     public struct Result: Codable, Hashable, Sendable {
@@ -374,6 +447,35 @@ public struct PermissionOption: Codable, Hashable, Sendable, Identifiable {
     public let title: String?
     public let description: String?
     public let isDestructive: Bool?
+
+    private enum CodingKeys: String, CodingKey {
+        case id, optionId, title, name, description, isDestructive, kind
+    }
+
+    public init(id: String, title: String? = nil, description: String? = nil, isDestructive: Bool? = nil) {
+        self.id = id; self.title = title; self.description = description; self.isDestructive = isDestructive
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.id = try container.decodeIfPresent(String.self, forKey: .id)
+            ?? container.decodeIfPresent(String.self, forKey: .optionId)
+            ?? ""
+        self.title = try container.decodeIfPresent(String.self, forKey: .title)
+            ?? container.decodeIfPresent(String.self, forKey: .name)
+        self.description = try container.decodeIfPresent(String.self, forKey: .description)
+        let kind = try container.decodeIfPresent(String.self, forKey: .kind)
+        self.isDestructive = (kind?.contains("reject") == true) ? true
+            : try container.decodeIfPresent(Bool.self, forKey: .isDestructive)
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id, forKey: .id)
+        try container.encodeIfPresent(title, forKey: .title)
+        try container.encodeIfPresent(description, forKey: .description)
+        try container.encodeIfPresent(isDestructive, forKey: .isDestructive)
+    }
 }
 
 public enum PermissionOutcome: String, Codable, Hashable, Sendable {
