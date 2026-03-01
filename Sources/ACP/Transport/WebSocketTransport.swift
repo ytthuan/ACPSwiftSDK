@@ -103,7 +103,10 @@ public actor WebSocketTransport: ACPTransport {
         guard let task = webSocketTask, state == .connected else {
             throw ACPError.notConnected
         }
-        let message = URLSessionWebSocketTask.Message.string(String(data: data, encoding: .utf8) ?? "")
+        guard let text = String(data: data, encoding: .utf8) else {
+    throw ACPError.encodingError("Failed to encode data as UTF-8 (\(data.count) bytes)")
+}
+let message = URLSessionWebSocketTask.Message.string(text)
         try await task.send(message)
     }
 
