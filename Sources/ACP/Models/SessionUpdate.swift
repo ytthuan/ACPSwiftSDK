@@ -127,6 +127,12 @@ extension RawSessionUpdate: Codable {
         case sessionId, sessionUpdate, content, delta, thought
         case toolCall, toolCallUpdate, entries, availableCommands
         case currentMode, modes, configOptions, used, size, cost
+        // modeId is decoded manually (ACP spec field for current_mode_update)
+    }
+
+    // Manual decode for modeId field that doesn't have a stored property
+    private enum ExtraKeys: String, CodingKey {
+        case modeId
     }
 
     init(from decoder: Decoder) throws {
@@ -159,7 +165,10 @@ extension RawSessionUpdate: Codable {
         }
         entries = try container.decodeIfPresent([PlanEntry].self, forKey: .entries)
         availableCommands = try container.decodeIfPresent([AvailableCommand].self, forKey: .availableCommands)
-        currentMode = try container.decodeIfPresent(String.self, forKey: .currentMode)
+        // Prefer ACP spec field 'modeId', fall back to 'currentMode'
+        let extraContainer = try? decoder.container(keyedBy: ExtraKeys.self)
+        currentMode = try extraContainer?.decodeIfPresent(String.self, forKey: .modeId)
+            ?? container.decodeIfPresent(String.self, forKey: .currentMode)
         modes = try container.decodeIfPresent([SessionMode].self, forKey: .modes)
         configOptions = try container.decodeIfPresent([ConfigOption].self, forKey: .configOptions)
         used = try container.decodeIfPresent(Int.self, forKey: .used)

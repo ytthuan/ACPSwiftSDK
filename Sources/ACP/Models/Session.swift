@@ -84,16 +84,23 @@ public struct AgentInfo: Codable, Hashable, Sendable {
 }
 
 public struct AgentCapabilities: Codable, Hashable, Sendable {
-    public let prompt: PromptCapabilities?
+    public let promptCapabilities: PromptCapabilities?
     public let loadSession: Bool?
     public let listSession: Bool?
     public let deleteSession: Bool?
     public let sessionCapabilities: SessionCapabilities?
+    public let mcpCapabilities: MCPCapabilities?
     public let _meta: Value?
 
     enum CodingKeys: String, CodingKey {
-        case prompt, loadSession, listSession, deleteSession, sessionCapabilities, _meta
+        case promptCapabilities, loadSession, listSession, deleteSession
+        case sessionCapabilities, mcpCapabilities, _meta
     }
+}
+
+public struct MCPCapabilities: Codable, Hashable, Sendable {
+    public let http: Bool?
+    public let sse: Bool?
 }
 
 public struct SessionCapabilities: Codable, Hashable, Sendable {
@@ -234,7 +241,10 @@ public enum SessionSetConfigOption: ACPMethod {
     }
 
     public struct Result: Codable, Hashable, Sendable {
-        public init() {}
+        public let configOptions: [ConfigOption]?
+        public init(configOptions: [ConfigOption]? = nil) {
+            self.configOptions = configOptions
+        }
     }
 }
 
