@@ -203,11 +203,11 @@ public enum SessionSetMode: ACPMethod {
 
     public struct Parameters: Codable, Hashable, Sendable {
         public let sessionId: String
-        public let mode: String
+        public let modeId: String
 
         public init(sessionId: String, mode: String) {
             self.sessionId = sessionId
-            self.mode = mode
+            self.modeId = mode
         }
     }
 
