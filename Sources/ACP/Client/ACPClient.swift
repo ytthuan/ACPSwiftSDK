@@ -140,11 +140,11 @@ public actor ACPClient {
     public func loadSession(sessionId: String, cwd: String? = nil, mcpServers: [MCPServerConfig] = []) async throws -> SessionLoad.Result {
         let params = SessionLoad.Parameters(sessionId: sessionId, cwd: cwd, mcpServers: mcpServers)
         let result: SessionLoad.Result = try await sendRequest(method: SessionLoad.name, params: params)
-        currentSessionId = result.sessionId
+        currentSessionId = result.sessionId ?? sessionId
         if let opts = result.configOptions { configOptions = opts }
         if let m = result.modes?.availableModes { modes = m }
         currentMode = result.modes?.currentModeId
-        logger.info("Session loaded: \(result.sessionId)")
+        logger.info("Session loaded: \(result.sessionId ?? sessionId)")
         return result
     }
 

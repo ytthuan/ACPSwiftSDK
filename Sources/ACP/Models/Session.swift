@@ -161,7 +161,7 @@ public enum SessionLoad: ACPMethod {
     }
 
     public struct Result: Codable, Hashable, Sendable {
-        public let sessionId: String
+        public let sessionId: String?
         public let modes: ModesInfo?
         public let models: ModelsInfo?
         public let configOptions: [ConfigOption]?
