@@ -33,7 +33,13 @@ public actor WebSocketTransport: ACPTransport {
     // MARK: - Connect
 
     public func connect() async throws {
-        guard case .disconnected = state else {
+        switch state {
+        case .disconnected:
+            break
+        case .error, .reconnecting:
+            // Clean up from previous error/reconnecting state before reconnecting
+            await disconnect()
+        case .connected, .connecting:
             logger.warning("Already connected or connecting")
             return
         }
@@ -157,20 +163,35 @@ let message = URLSessionWebSocketTask.Message.string(text)
     }
 
     private func handleReceiveError(_ error: Error) {
-        if !Task.isCancelled {
-            logger.error("WebSocket receive error: \(error)")
-            state = .error(error.localizedDescription)
-            receiveContinuation?.finish(throwing: error)
-        }
+        // Only process from connected/connecting — prevents duplicate cleanup
+        // when both heartbeat and receive loop hit the same dead socket.
+        guard state == .connected || state == .connecting else { return }
+        logger.error("WebSocket receive error: \(error)")
+        state = .error(error.localizedDescription)
+        // Cancel all background tasks to stop generating errors on dead socket
+        heartbeatTask?.cancel()
+        heartbeatTask = nil
+        receiveTask?.cancel()
+        receiveTask = nil
+        // Tear down the dead socket
+        webSocketTask?.cancel(with: .abnormalClosure, reason: nil)
+        webSocketTask = nil
+        urlSession?.invalidateAndCancel()
+        urlSession = nil
+        sessionDelegate = nil
+        ndjsonBuffer.reset()
+        receiveContinuation?.finish(throwing: error)
+        receiveContinuation = nil
     }
 
     private func startHeartbeat() {
         heartbeatTask = Task {
             while !Task.isCancelled {
                 try? await Task.sleep(for: .seconds(self.configuration.heartbeatInterval))
-                guard let task = self.webSocketTask else { break }
+                // Stop heartbeat if transport is no longer connected (error, disconnected, etc.)
+                guard !Task.isCancelled, self.state == .connected, let task = self.webSocketTask else { break }
                 task.sendPing { [weak task] error in
-                    _ = task // suppress unused capture warning
+                    _ = task
                     if let error {
                         Task { await self.handleReceiveError(error) }
                     }
