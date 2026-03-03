@@ -1,5 +1,7 @@
 # ACP Swift SDK
 
+[![CI](https://github.com/ytthuan/ACPSwiftSDK/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ytthuan/ACPSwiftSDK/actions/workflows/ci.yml)
+
 A Swift 6+ SDK for the [Agent Client Protocol (ACP)](https://agentclientprotocol.com) — the open protocol for communication between AI coding agents and their clients.
 
 ## Features
@@ -199,6 +201,23 @@ The test suite includes:
 - **CoreTypesTests** — JSON-RPC, Value, NDJSON, ContentBlock, Error types
 - **IntegrationTests** — Transport, session methods, update parsing, tool calls
 - **EndToEndTests** — Full conversation flow with mock ACP server
+
+## Releasing
+
+Stable releases are published from tags in the format `vMAJOR.MINOR.PATCH`.
+
+Quick steps:
+
+```bash
+swift build
+swift test
+git tag -a vX.Y.Z -m "Release vX.Y.Z"
+git push origin vX.Y.Z
+```
+
+The `Release` workflow validates tag format, confirms the tag commit is on `main`, runs build/tests, and creates a GitHub Release with auto-generated notes.
+
+Full runbook: [RELEASING.md](RELEASING.md)
 
 ## Protocol Reference
 
