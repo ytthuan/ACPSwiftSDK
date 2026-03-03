@@ -406,8 +406,14 @@ extension ToolCallContent: Codable {
         case "terminal":
             self = .terminal(try container.decode(ToolCallTerminal.self, forKey: .terminal))
         default:
-            let text = try container.decodeIfPresent(String.self, forKey: .content) ?? ""
-            self = .content(text)
+            // CLI may send content as a plain String or as a nested {type:"text", text:"..."} object
+            if let text = try? container.decodeIfPresent(String.self, forKey: .content) {
+                self = .content(text ?? "")
+            } else {
+                struct NestedText: Codable { let text: String? }
+                let nested = try? container.decodeIfPresent(NestedText.self, forKey: .content)
+                self = .content(nested?.text ?? "")
+            }
         }
     }
 
