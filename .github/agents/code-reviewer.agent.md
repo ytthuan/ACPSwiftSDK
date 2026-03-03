@@ -1,7 +1,7 @@
 ---
 name: code-reviewer
 description: Reviews Swift code changes in ACPSwiftSDK for bugs, security vulnerabilities, logic errors, data races, and architectural issues. High signal-to-noise — only surfaces issues that genuinely matter. Will NOT modify code.
-tools: [read, search, execute, todo, swiftui-axiom/*, xcode-mcp-official/XcodeGrep, xcode-mcp-official/XcodeGlob, xcode-mcp-official/XcodeRead, xcode-mcp-official/XcodeRefreshCodeIssuesInFile]
+tools: [read, search, execute, todo]
 model: GPT-5.3-Codex (copilot)
 ---
 

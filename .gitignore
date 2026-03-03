@@ -1,0 +1,30 @@
+# Swift Package Manager
+.build/
+.swiftpm/
+Package.resolved
+Packages/
+xcuserdata/
+
+# Xcode
+*.xcodeproj/xcuserdata/
+*.xcworkspace/xcuserdata/
+DerivedData/
+*.moved-aside
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# CocoaPods (not used, but just in case)
+Pods/
