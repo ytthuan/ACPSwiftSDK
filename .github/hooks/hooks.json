@@ -1,0 +1,82 @@
+{
+  "version": 1,
+  "hooks": {
+    "userPromptSubmitted": [
+      {
+        "type": "command",
+        "bash": "./scripts/notify-telegram-hook.sh",
+        "env": {
+          "TELEGRAM_CHAT_ID": "-1003657338748",
+          "HOOK_EVENT": "userpromptsubmit"
+        },
+        "timeoutSec": 10
+      } 
+    ],
+    "sessionEnd": [
+        {
+        "type": "command",
+        "bash": "./scripts/notify-telegram-hook.sh",
+        "env": {
+          "TELEGRAM_CHAT_ID": "-1003657338748",
+          "HOOK_EVENT": "stop"
+        },
+        "timeoutSec": 10
+      } 
+    ],
+    "subagentStart": [
+      {
+        "type": "command",
+        "bash": "./scripts/notify-telegram-hook.sh",
+        "env": {
+          "TELEGRAM_CHAT_ID": "-1003657338748",
+          "HOOK_EVENT": "subagentstart"
+        },
+        "timeoutSec": 10
+      }
+    ],
+    "subagentStop": [
+      {
+        "type": "command",
+        "bash": "./scripts/notify-telegram-hook.sh",
+        "env": {
+          "TELEGRAM_CHAT_ID": "-1003657338748",
+          "HOOK_EVENT": "subagentstop"
+        },
+        "timeoutSec": 10
+      }
+    ],
+    "agentStop": [
+      {
+        "type": "command",
+        "bash": "./scripts/notify-telegram-hook.sh",
+        "env": {
+          "TELEGRAM_CHAT_ID": "-1003657338748",
+          "HOOK_EVENT": "agentstop"
+        },
+        "timeoutSec": 10
+      }
+    ],
+    "errorOccurred": [
+      {
+        "type": "command",
+        "bash": "./scripts/notify-telegram-hook.sh",
+        "env": {
+          "TELEGRAM_CHAT_ID": "-1003657338748",
+          "HOOK_EVENT": "error"
+        },
+        "timeoutSec": 10
+      }
+    ],
+    "preCompact": [
+      {
+        "type": "command",
+        "bash": "./scripts/notify-telegram-hook.sh",
+        "env": {
+          "TELEGRAM_CHAT_ID": "-1003657338748",
+          "HOOK_EVENT": "precompact"
+        },
+        "timeoutSec": 10
+      }
+    ]
+  }
+}
