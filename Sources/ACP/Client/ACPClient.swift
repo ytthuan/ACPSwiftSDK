@@ -198,6 +198,11 @@ public actor ACPClient {
         return try await sendRequest(method: SessionDelete.name, params: params)
     }
 
+    /// Authenticate with the agent using a specific auth method.
+    public func authenticate(methodId: String) async throws -> Authenticate.Result {
+        try await sendRequest(method: Authenticate.name, params: Authenticate.Parameters(methodId: methodId))
+    }
+
     // MARK: - Handler Registration
 
     /// Register a handler for session updates.
@@ -233,6 +238,97 @@ public actor ACPClient {
             let result = try await handler(id, params)
             let response = JSONRPCResponse(id: id, result: result)
             return try JSONEncoder().encode(response)
+        }
+    }
+
+    /// Register a handler for `terminal/create` requests from the agent.
+    public func onCreateTerminal(_ handler: @escaping @Sendable (CreateTerminal.Parameters) async throws -> CreateTerminal.Result) {
+        onRequest(CreateTerminal.name) { [codec] id, data in
+            let wrapper = try JSONDecoder().decode(JSONRPCRequest<CreateTerminal.Parameters>.self, from: data)
+            guard let params = wrapper.params else {
+                throw ACPError.decodingError("Missing params in terminal/create request")
+            }
+            let result = try await handler(params)
+            let response = JSONRPCResponse(id: id, result: result)
+            return try codec.encode(response)
+        }
+    }
+
+    /// Register a handler for `terminal/output` requests from the agent.
+    public func onTerminalOutput(_ handler: @escaping @Sendable (TerminalOutput.Parameters) async throws -> TerminalOutput.Result) {
+        onRequest(TerminalOutput.name) { [codec] id, data in
+            let wrapper = try JSONDecoder().decode(JSONRPCRequest<TerminalOutput.Parameters>.self, from: data)
+            guard let params = wrapper.params else {
+                throw ACPError.decodingError("Missing params in terminal/output request")
+            }
+            let result = try await handler(params)
+            let response = JSONRPCResponse(id: id, result: result)
+            return try codec.encode(response)
+        }
+    }
+
+    /// Register a handler for `terminal/wait_for_exit` requests from the agent.
+    public func onWaitForTerminalExit(_ handler: @escaping @Sendable (WaitForTerminalExit.Parameters) async throws -> WaitForTerminalExit.Result) {
+        onRequest(WaitForTerminalExit.name) { [codec] id, data in
+            let wrapper = try JSONDecoder().decode(JSONRPCRequest<WaitForTerminalExit.Parameters>.self, from: data)
+            guard let params = wrapper.params else {
+                throw ACPError.decodingError("Missing params in terminal/wait_for_exit request")
+            }
+            let result = try await handler(params)
+            let response = JSONRPCResponse(id: id, result: result)
+            return try codec.encode(response)
+        }
+    }
+
+    /// Register a handler for `terminal/kill` requests from the agent.
+    public func onKillTerminal(_ handler: @escaping @Sendable (KillTerminal.Parameters) async throws -> KillTerminal.Result) {
+        onRequest(KillTerminal.name) { [codec] id, data in
+            let wrapper = try JSONDecoder().decode(JSONRPCRequest<KillTerminal.Parameters>.self, from: data)
+            guard let params = wrapper.params else {
+                throw ACPError.decodingError("Missing params in terminal/kill request")
+            }
+            let result = try await handler(params)
+            let response = JSONRPCResponse(id: id, result: result)
+            return try codec.encode(response)
+        }
+    }
+
+    /// Register a handler for `terminal/release` requests from the agent.
+    public func onReleaseTerminal(_ handler: @escaping @Sendable (ReleaseTerminal.Parameters) async throws -> ReleaseTerminal.Result) {
+        onRequest(ReleaseTerminal.name) { [codec] id, data in
+            let wrapper = try JSONDecoder().decode(JSONRPCRequest<ReleaseTerminal.Parameters>.self, from: data)
+            guard let params = wrapper.params else {
+                throw ACPError.decodingError("Missing params in terminal/release request")
+            }
+            let result = try await handler(params)
+            let response = JSONRPCResponse(id: id, result: result)
+            return try codec.encode(response)
+        }
+    }
+
+    /// Register handler for agent's fs/read_text_file requests.
+    public func onReadTextFile(_ handler: @escaping @Sendable (ReadTextFile.Parameters) async throws -> ReadTextFile.Result) {
+        onRequest(ReadTextFile.name) { [codec] id, data in
+            let wrapper = try JSONDecoder().decode(JSONRPCRequest<ReadTextFile.Parameters>.self, from: data)
+            guard let params = wrapper.params else {
+                throw ACPError.decodingError("Missing params in read_text_file request")
+            }
+            let result = try await handler(params)
+            let response = JSONRPCResponse(id: id, result: result)
+            return try codec.encode(response)
+        }
+    }
+
+    /// Register handler for agent's fs/write_text_file requests.
+    public func onWriteTextFile(_ handler: @escaping @Sendable (WriteTextFile.Parameters) async throws -> WriteTextFile.Result) {
+        onRequest(WriteTextFile.name) { [codec] id, data in
+            let wrapper = try JSONDecoder().decode(JSONRPCRequest<WriteTextFile.Parameters>.self, from: data)
+            guard let params = wrapper.params else {
+                throw ACPError.decodingError("Missing params in write_text_file request")
+            }
+            let result = try await handler(params)
+            let response = JSONRPCResponse(id: id, result: result)
+            return try codec.encode(response)
         }
     }
 
@@ -354,7 +450,7 @@ public actor ACPClient {
                 logger.error("Request handler error for \(method): \(error)")
                 let errResponse = JSONRPCErrorResponse(
                     id: id,
-                    error: JSONRPCError.internalError(error.localizedDescription)
+                    error: JSONRPCError.internalError(String(describing: error))
                 )
                 do {
                     let data = try codec.encode(errResponse)

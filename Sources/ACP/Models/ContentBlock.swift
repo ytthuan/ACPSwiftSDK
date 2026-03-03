@@ -65,11 +65,13 @@ public struct TextContent: Codable, Hashable, Sendable {
     public let type: String
     public let text: String
     public let annotations: Annotations?
+    public let _meta: Value?
 
-    public init(text: String, annotations: Annotations? = nil) {
+    public init(text: String, annotations: Annotations? = nil, _meta: Value? = nil) {
         self.type = "text"
         self.text = text
         self.annotations = annotations
+        self._meta = _meta
     }
 }
 
@@ -77,13 +79,17 @@ public struct ImageContent: Codable, Hashable, Sendable {
     public let type: String
     public let data: String
     public let mimeType: String
+    public let uri: String?
     public let annotations: Annotations?
+    public let _meta: Value?
 
-    public init(data: String, mimeType: String, annotations: Annotations? = nil) {
+    public init(data: String, mimeType: String, uri: String? = nil, annotations: Annotations? = nil, _meta: Value? = nil) {
         self.type = "image"
         self.data = data
         self.mimeType = mimeType
+        self.uri = uri
         self.annotations = annotations
+        self._meta = _meta
     }
 }
 
@@ -92,22 +98,26 @@ public struct AudioContent: Codable, Hashable, Sendable {
     public let data: String
     public let mimeType: String
     public let annotations: Annotations?
+    public let _meta: Value?
 
-    public init(data: String, mimeType: String, annotations: Annotations? = nil) {
+    public init(data: String, mimeType: String, annotations: Annotations? = nil, _meta: Value? = nil) {
         self.type = "audio"
         self.data = data
         self.mimeType = mimeType
         self.annotations = annotations
+        self._meta = _meta
     }
 }
 
 public struct ResourceContent: Codable, Hashable, Sendable {
     public let type: String
     public let resource: EmbeddedResource
+    public let _meta: Value?
 
-    public init(resource: EmbeddedResource) {
+    public init(resource: EmbeddedResource, _meta: Value? = nil) {
         self.type = "resource"
         self.resource = resource
+        self._meta = _meta
     }
 }
 
@@ -131,13 +141,19 @@ public struct ResourceLinkContent: Codable, Hashable, Sendable {
     public let name: String?
     public let description: String?
     public let mimeType: String?
+    public let title: String?
+    public let size: Int?
+    public let _meta: Value?
 
-    public init(uri: String, name: String? = nil, description: String? = nil, mimeType: String? = nil) {
+    public init(uri: String, name: String? = nil, description: String? = nil, mimeType: String? = nil, title: String? = nil, size: Int? = nil, _meta: Value? = nil) {
         self.type = "resource_link"
         self.uri = uri
         self.name = name
         self.description = description
         self.mimeType = mimeType
+        self.title = title
+        self.size = size
+        self._meta = _meta
     }
 }
 

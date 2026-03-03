@@ -26,6 +26,42 @@ public enum Initialize: ACPMethod {
         public let protocolVersion: Int?
         public let agentInfo: AgentInfo?
         public let agentCapabilities: AgentCapabilities?
+        public let authMethods: [AuthMethod]?
+    }
+}
+
+// MARK: - Auth Method
+
+public struct AuthMethod: Codable, Hashable, Sendable {
+    public let id: String
+    public let name: String
+    public let description: String?
+    public let type: String?
+
+    public init(id: String, name: String, description: String? = nil, type: String? = nil) {
+        self.id = id
+        self.name = name
+        self.description = description
+        self.type = type
+    }
+}
+
+// MARK: - Authenticate
+
+/// `authenticate` method — authenticate with the agent using a specific auth method.
+public enum Authenticate: ACPMethod {
+    public static let name = "authenticate"
+
+    public struct Parameters: Codable, Hashable, Sendable {
+        public let methodId: String
+
+        public init(methodId: String) {
+            self.methodId = methodId
+        }
+    }
+
+    public struct Result: Codable, Hashable, Sendable {
+        public init() {}
     }
 }
 
@@ -42,10 +78,12 @@ public enum Initialized: ACPNotification {
 
 public struct ClientInfo: Codable, Hashable, Sendable {
     public let name: String
+    public let title: String?
     public let version: String
 
-    public init(name: String, version: String) {
+    public init(name: String, title: String? = nil, version: String) {
         self.name = name
+        self.title = title
         self.version = version
     }
 }
@@ -80,6 +118,7 @@ public struct FSCapabilities: Codable, Hashable, Sendable {
 
 public struct AgentInfo: Codable, Hashable, Sendable {
     public let name: String?
+    public let title: String?
     public let version: String?
 }
 
@@ -137,6 +176,7 @@ public enum SessionNew: ACPMethod {
         /// Nested modes object from Copilot CLI (modes.availableModes, modes.currentModeId)
         public let modes: ModesInfo?
         /// Nested models object from Copilot CLI (models.availableModels, models.currentModelId)
+        /// - Note: Copilot CLI extension, not part of the ACP specification.
         public let models: ModelsInfo?
         /// Flat config options array (ACP spec format)
         public let configOptions: [ConfigOption]?
@@ -185,6 +225,7 @@ public enum SessionPrompt: ACPMethod {
 
     public struct Result: Codable, Hashable, Sendable {
         public let stopReason: StopReason?
+        /// - Note: Copilot CLI extension, not part of the ACP specification.
         public let usage: TokenUsage?
     }
 }
@@ -250,6 +291,8 @@ public enum SessionSetConfigOption: ACPMethod {
 
 // MARK: - Session/List (RFD)
 
+/// `session/list` — list all sessions.
+/// - Note: ACP RFD feature, not yet in the stable ACP specification.
 public enum SessionList: ACPMethod {
     public static let name = "session/list"
 
@@ -271,6 +314,8 @@ public struct SessionSummary: Codable, Hashable, Sendable {
 
 // MARK: - Session/Delete (RFD)
 
+/// `session/delete` — delete a session by ID.
+/// - Note: ACP RFD feature, not yet in the stable ACP specification.
 public enum SessionDelete: ACPMethod {
     public static let name = "session/delete"
 
@@ -287,17 +332,133 @@ public enum SessionDelete: ACPMethod {
     }
 }
 
+// MARK: - File System (Agent → Client)
+
+/// `fs/read_text_file` — agent asks the client to read a file from the local file system.
+public enum ReadTextFile: ACPMethod {
+    public static let name = "fs/read_text_file"
+
+    public struct Parameters: Codable, Hashable, Sendable {
+        public let sessionId: String
+        public let path: String
+        public let line: Int?
+        public let limit: Int?
+
+        public init(sessionId: String, path: String, line: Int? = nil, limit: Int? = nil) {
+            self.sessionId = sessionId
+            self.path = path
+            self.line = line
+            self.limit = limit
+        }
+    }
+
+    public struct Result: Codable, Hashable, Sendable {
+        public let content: String
+
+        public init(content: String) {
+            self.content = content
+        }
+    }
+}
+
+/// `fs/write_text_file` — agent asks the client to write a file to the local file system.
+public enum WriteTextFile: ACPMethod {
+    public static let name = "fs/write_text_file"
+
+    public struct Parameters: Codable, Hashable, Sendable {
+        public let sessionId: String
+        public let path: String
+        public let content: String
+
+        public init(sessionId: String, path: String, content: String) {
+            self.sessionId = sessionId
+            self.path = path
+            self.content = content
+        }
+    }
+
+    public struct Result: Codable, Hashable, Sendable {
+        public init() {}
+    }
+}
+
 // MARK: - Supporting Types
 
 public struct MCPServerConfig: Codable, Hashable, Sendable {
+    /// Transport type: `"http"` or `"sse"`. `nil` for stdio (the default).
+    public let type: String?
     public let name: String?
+    /// The command to launch the MCP server process (stdio transport).
+    public let command: String?
+    /// Arguments passed to the command (stdio transport).
+    public let args: [String]?
+    /// Legacy URI field retained for backward compatibility.
     public let uri: String?
+    /// Server URL (http / sse transport).
+    public let url: String?
+    /// Environment variables passed to the server process (stdio transport).
     public let env: [EnvVariable]?
+    /// HTTP headers sent when connecting (http / sse transport).
+    public let headers: [HttpHeader]?
 
-    public init(name: String? = nil, uri: String? = nil, env: [EnvVariable]? = nil) {
+    public init(
+        type: String? = nil,
+        name: String? = nil,
+        command: String? = nil,
+        args: [String]? = nil,
+        uri: String? = nil,
+        url: String? = nil,
+        env: [EnvVariable]? = nil,
+        headers: [HttpHeader]? = nil
+    ) {
+        self.type = type
         self.name = name
+        self.command = command
+        self.args = args
         self.uri = uri
+        self.url = url
         self.env = env
+        self.headers = headers
+    }
+}
+
+extension MCPServerConfig {
+    /// Create a stdio transport config.
+    public static func stdio(
+        name: String,
+        command: String,
+        args: [String] = [],
+        env: [EnvVariable] = []
+    ) -> MCPServerConfig {
+        MCPServerConfig(name: name, command: command, args: args, env: env)
+    }
+
+    /// Create an HTTP transport config.
+    public static func http(
+        name: String,
+        url: String,
+        headers: [HttpHeader] = []
+    ) -> MCPServerConfig {
+        MCPServerConfig(type: "http", name: name, url: url, headers: headers)
+    }
+
+    /// Create an SSE transport config.
+    public static func sse(
+        name: String,
+        url: String,
+        headers: [HttpHeader] = []
+    ) -> MCPServerConfig {
+        MCPServerConfig(type: "sse", name: name, url: url, headers: headers)
+    }
+}
+
+public struct HttpHeader: Codable, Hashable, Sendable {
+    public let name: String
+    public let value: String
+
+    public init(name: String, value: String) {
+        self.name = name
+        self.value = value
     }
 }
 
@@ -313,6 +474,7 @@ public struct EnvVariable: Codable, Hashable, Sendable {
 
 // MARK: - Token Usage
 
+/// - Note: Copilot CLI extension, not part of the ACP specification.
 public struct TokenUsage: Codable, Hashable, Sendable {
     public let totalTokens: Int?
     public let inputTokens: Int?
@@ -372,11 +534,13 @@ public struct SessionMode: Codable, Hashable, Sendable, Identifiable {
 
 // MARK: - Models Info (Copilot CLI response format)
 
+/// - Note: Copilot CLI extension, not part of the ACP specification.
 public struct ModelsInfo: Codable, Hashable, Sendable {
     public let availableModels: [ModelInfo]?
     public let currentModelId: String?
 }
 
+/// - Note: Copilot CLI extension, not part of the ACP specification.
 public struct ModelInfo: Codable, Hashable, Sendable, Identifiable {
     public var id: String { modelId }
     public let modelId: String
@@ -396,6 +560,7 @@ public struct ModesInfo: Codable, Hashable, Sendable {
 public struct ConfigOption: Codable, Hashable, Sendable, Identifiable {
     public let id: String
     public let name: String?
+    public let description: String?
     public let category: ConfigCategory?
     public let type: String?
     public let currentValue: String?
@@ -412,4 +577,146 @@ public struct ConfigOptionValue: Codable, Hashable, Sendable {
     public let value: String
     public let name: String?
     public let description: String?
+}
+
+// MARK: - Terminal Methods (agent → client)
+
+/// `terminal/create` — agent asks the client to create a terminal.
+public enum CreateTerminal: ACPMethod {
+    public static let name = "terminal/create"
+
+    public struct Parameters: Codable, Hashable, Sendable {
+        public let sessionId: String
+        public let command: String
+        public let args: [String]?
+        public let env: [EnvVariable]?
+        public let cwd: String?
+        public let outputByteLimit: Int?
+
+        public init(
+            sessionId: String,
+            command: String,
+            args: [String]? = nil,
+            env: [EnvVariable]? = nil,
+            cwd: String? = nil,
+            outputByteLimit: Int? = nil
+        ) {
+            self.sessionId = sessionId
+            self.command = command
+            self.args = args
+            self.env = env
+            self.cwd = cwd
+            self.outputByteLimit = outputByteLimit
+        }
+    }
+
+    public struct Result: Codable, Hashable, Sendable {
+        public let terminalId: String
+
+        public init(terminalId: String) {
+            self.terminalId = terminalId
+        }
+    }
+}
+
+/// `terminal/output` — agent asks the client for terminal output.
+public enum TerminalOutput: ACPMethod {
+    public static let name = "terminal/output"
+
+    public struct Parameters: Codable, Hashable, Sendable {
+        public let sessionId: String
+        public let terminalId: String
+
+        public init(sessionId: String, terminalId: String) {
+            self.sessionId = sessionId
+            self.terminalId = terminalId
+        }
+    }
+
+    public struct Result: Codable, Hashable, Sendable {
+        public let output: String
+        public let truncated: Bool
+        public let exitStatus: TerminalExitStatus?
+
+        public init(output: String, truncated: Bool, exitStatus: TerminalExitStatus? = nil) {
+            self.output = output
+            self.truncated = truncated
+            self.exitStatus = exitStatus
+        }
+    }
+}
+
+/// `terminal/wait_for_exit` — agent asks the client to wait for a terminal to exit.
+public enum WaitForTerminalExit: ACPMethod {
+    public static let name = "terminal/wait_for_exit"
+
+    public struct Parameters: Codable, Hashable, Sendable {
+        public let sessionId: String
+        public let terminalId: String
+
+        public init(sessionId: String, terminalId: String) {
+            self.sessionId = sessionId
+            self.terminalId = terminalId
+        }
+    }
+
+    public struct Result: Codable, Hashable, Sendable {
+        public let exitCode: Int?
+        public let signal: String?
+
+        public init(exitCode: Int? = nil, signal: String? = nil) {
+            self.exitCode = exitCode
+            self.signal = signal
+        }
+    }
+}
+
+/// `terminal/kill` — agent asks the client to kill a terminal.
+public enum KillTerminal: ACPMethod {
+    public static let name = "terminal/kill"
+
+    public struct Parameters: Codable, Hashable, Sendable {
+        public let sessionId: String
+        public let terminalId: String
+
+        public init(sessionId: String, terminalId: String) {
+            self.sessionId = sessionId
+            self.terminalId = terminalId
+        }
+    }
+
+    public struct Result: Codable, Hashable, Sendable {
+        public init() {}
+    }
+}
+
+/// `terminal/release` — agent asks the client to release a terminal.
+public enum ReleaseTerminal: ACPMethod {
+    public static let name = "terminal/release"
+
+    public struct Parameters: Codable, Hashable, Sendable {
+        public let sessionId: String
+        public let terminalId: String
+
+        public init(sessionId: String, terminalId: String) {
+            self.sessionId = sessionId
+            self.terminalId = terminalId
+        }
+    }
+
+    public struct Result: Codable, Hashable, Sendable {
+        public init() {}
+    }
+}
+
+// MARK: - Terminal Exit Status
+
+public struct TerminalExitStatus: Codable, Hashable, Sendable {
+    public let exitCode: Int?
+    public let signal: String?
+
+    public init(exitCode: Int? = nil, signal: String? = nil) {
+        self.exitCode = exitCode
+        self.signal = signal
+    }
 }

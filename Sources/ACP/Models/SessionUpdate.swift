@@ -250,6 +250,7 @@ extension RawSessionUpdate: Codable {
 
 public struct AgentMessageChunk: Codable, Hashable, Sendable {
     public let content: [ContentBlock]?
+    /// - Note: Copilot CLI streaming extension, not part of the ACP specification.
     public let delta: String?
 }
 
@@ -257,6 +258,7 @@ public struct AgentMessageChunk: Codable, Hashable, Sendable {
 
 public struct UserMessageChunk: Codable, Hashable, Sendable {
     public let content: [ContentBlock]?
+    /// - Note: Copilot CLI streaming extension, not part of the ACP specification.
     public let delta: String?
 }
 
@@ -464,6 +466,8 @@ public struct ToolCallDiff: Codable, Hashable, Sendable {
 }
 
 public struct ToolCallTerminal: Codable, Hashable, Sendable {
+    /// ACP spec: identifies the terminal instance.
+    public let terminalId: String?
     public let command: String?
     public let output: String?
     public let exitCode: Int?
@@ -579,6 +583,8 @@ public struct PlanUpdate: Codable, Hashable, Sendable {
 
 public struct PlanEntry: Codable, Hashable, Sendable, Identifiable {
     public let id: String
+    /// ACP spec required field — the task description.
+    public let content: String?
     public let title: String?
     public let description: String?
     public let priority: PlanPriority?
@@ -627,12 +633,14 @@ public struct ConfigOptionsUpdate: Codable, Hashable, Sendable {
 
 // MARK: - Usage Update
 
+/// - Note: Copilot CLI extension, not part of the ACP specification.
 public struct UsageUpdate: Codable, Hashable, Sendable {
     public let used: Int
     public let size: Int
     public let cost: UsageCost?
 }
 
+/// - Note: Copilot CLI extension, not part of the ACP specification.
 public struct UsageCost: Codable, Hashable, Sendable {
     public let amount: Double?
     public let currency: String?
