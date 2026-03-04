@@ -18,17 +18,23 @@ This document defines the release contract for publishing the Swift package.
    swift build
    swift test
    ```
-3. Choose the next semantic version, for example `v0.2.0`.
-4. Create an annotated tag:
+3. Maintain `CHANGELOG.md` with an active `## [Unreleased]` section during development.
+4. Choose the next semantic version, for example `v0.2.0` (changelog version is `0.2.0`).
+5. Promote `Unreleased` to the release version before tagging:
+   ```bash
+   bash scripts/update-changelog.sh 0.2.0 2026-03-04
+   ```
+6. Ensure the Git tag version matches the changelog version exactly (`v0.2.0` ↔ `0.2.0`).
+7. Create an annotated tag:
    ```bash
    git tag -a vX.Y.Z -m "Release vX.Y.Z"
    ```
-5. Push the tag:
+8. Push the tag:
    ```bash
    git push origin vX.Y.Z
    ```
-6. Verify the `Release` workflow succeeded in GitHub Actions.
-7. Verify the GitHub Release exists and includes generated notes.
+9. Verify the `Release` workflow succeeded in GitHub Actions.
+10. Verify the GitHub Release exists and includes generated notes.
 
 ## Rejected Tags
 

@@ -4,20 +4,15 @@
 
 A Swift 6+ SDK for the [Agent Client Protocol (ACP)](https://agentclientprotocol.com) — the open protocol for communication between AI coding agents and their clients.
 
-## Latest Update (v0.1.2)
+## Latest Update (v0.1.3)
 
-- Added missing ACP client-side method support:
-  - `fs/read_text_file`, `fs/write_text_file`
-  - `terminal/create`, `terminal/output`, `terminal/wait_for_exit`, `terminal/kill`, `terminal/release`
-- Added `authenticate` support and `authMethods` in initialize response models.
-- Improved ACP schema alignment:
-  - Added `uri` to image content
-  - Added `title` and `size` to resource links
-  - Added `description` to config options
-  - Added `content` to plan entries and `terminalId` to terminal tool content
-  - Added `_meta` support on content block models
-- Added spec compliance tests and terminal malformed-request safety tests.
-- Hardened terminal request handlers to avoid force-unwrapping crashes on malformed JSON-RPC requests.
+- Improved ACP spec compliance (second pass):
+  - updated spec field names (`currentModeId`, permission option encoding fields)
+  - added `line` to tool call locations
+  - added `annotations` support for embedded/resource content
+  - added 6 additional spec compliance tests
+- v0.1.2 recap: added `authenticate`, fs/terminal client methods, broader schema coverage, and malformed terminal request safety hardening.
+- See [CHANGELOG.md](CHANGELOG.md) for full release history.
 
 ## Features
 
