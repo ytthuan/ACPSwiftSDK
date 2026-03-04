@@ -162,6 +162,8 @@ public enum SessionNew: ACPMethod {
     public static let name = "session/new"
 
     public struct Parameters: Codable, Hashable, Sendable {
+        /// The working directory for this session. Must be an absolute path.
+        /// - Important: Required by the ACP specification.
         public let cwd: String?
         public let mcpServers: [MCPServerConfig]
 

@@ -110,7 +110,7 @@ struct RawSessionUpdate: Sendable {
     let availableCommands: [AvailableCommand]?
 
     // Mode
-    let currentMode: String?
+    let currentModeId: String?
     let modes: [SessionMode]?
 
     // Config options
@@ -126,13 +126,13 @@ extension RawSessionUpdate: Codable {
     private enum CodingKeys: String, CodingKey {
         case sessionId, sessionUpdate, content, delta, thought
         case toolCall, toolCallUpdate, entries, availableCommands
-        case currentMode, modes, configOptions, used, size, cost
-        // modeId is decoded manually (ACP spec field for current_mode_update)
+        case currentModeId, modes, configOptions, used, size, cost
+        // modeId and currentMode are decoded manually (backward compat fallbacks)
     }
 
-    // Manual decode for modeId field that doesn't have a stored property
+    // Manual decode for backward-compat fields
     private enum ExtraKeys: String, CodingKey {
-        case modeId
+        case modeId, currentMode
     }
 
     init(from decoder: Decoder) throws {
@@ -165,10 +165,11 @@ extension RawSessionUpdate: Codable {
         }
         entries = try container.decodeIfPresent([PlanEntry].self, forKey: .entries)
         availableCommands = try container.decodeIfPresent([AvailableCommand].self, forKey: .availableCommands)
-        // Prefer ACP spec field 'modeId', fall back to 'currentMode'
+        // Prefer ACP spec field 'currentModeId', fall back to 'currentMode' or 'modeId'
         let extraContainer = try? decoder.container(keyedBy: ExtraKeys.self)
-        currentMode = try extraContainer?.decodeIfPresent(String.self, forKey: .modeId)
-            ?? container.decodeIfPresent(String.self, forKey: .currentMode)
+        currentModeId = try container.decodeIfPresent(String.self, forKey: .currentModeId)
+            ?? extraContainer?.decodeIfPresent(String.self, forKey: .currentMode)
+            ?? extraContainer?.decodeIfPresent(String.self, forKey: .modeId)
         modes = try container.decodeIfPresent([SessionMode].self, forKey: .modes)
         configOptions = try container.decodeIfPresent([ConfigOption].self, forKey: .configOptions)
         used = try container.decodeIfPresent(Int.self, forKey: .used)
@@ -227,7 +228,7 @@ extension RawSessionUpdate: Codable {
             ))
         case "current_mode_update":
             return .currentModeUpdate(CurrentModeUpdate(
-                currentMode: currentMode ?? "",
+                currentModeId: currentModeId ?? "",
                 modes: modes
             ))
         case "config_options_update":
@@ -476,9 +477,41 @@ public struct ToolCallTerminal: Codable, Hashable, Sendable {
 // MARK: - Tool Call Location
 
 public struct ToolCallLocation: Codable, Hashable, Sendable {
+    /// File path targeted by the tool call.
     public let path: String
+    /// ACP spec: optional single line number.
+    public let line: Int?
+    /// Copilot CLI backward-compat: start line of the affected range.
     public let lineStart: Int?
+    /// Copilot CLI backward-compat: end line of the affected range.
     public let lineEnd: Int?
+
+    private enum CodingKeys: String, CodingKey {
+        case path, line, lineStart, lineEnd
+    }
+
+    public init(path: String, line: Int? = nil, lineStart: Int? = nil, lineEnd: Int? = nil) {
+        self.path = path
+        self.line = line
+        self.lineStart = lineStart
+        self.lineEnd = lineEnd
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.path = try container.decode(String.self, forKey: .path)
+        self.line = try container.decodeIfPresent(Int.self, forKey: .line)
+        self.lineStart = try container.decodeIfPresent(Int.self, forKey: .lineStart)
+        self.lineEnd = try container.decodeIfPresent(Int.self, forKey: .lineEnd)
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(path, forKey: .path)
+        try container.encodeIfPresent(line, forKey: .line)
+        try container.encodeIfPresent(lineStart, forKey: .lineStart)
+        try container.encodeIfPresent(lineEnd, forKey: .lineEnd)
+    }
 }
 
 // MARK: - Confirmation Request
@@ -549,11 +582,11 @@ public struct PermissionOption: Codable, Hashable, Sendable, Identifiable {
 
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        self.id = try container.decodeIfPresent(String.self, forKey: .id)
-            ?? container.decodeIfPresent(String.self, forKey: .optionId)
+        self.id = try container.decodeIfPresent(String.self, forKey: .optionId)
+            ?? container.decodeIfPresent(String.self, forKey: .id)
             ?? ""
-        self.title = try container.decodeIfPresent(String.self, forKey: .title)
-            ?? container.decodeIfPresent(String.self, forKey: .name)
+        self.title = try container.decodeIfPresent(String.self, forKey: .name)
+            ?? container.decodeIfPresent(String.self, forKey: .title)
         self.description = try container.decodeIfPresent(String.self, forKey: .description)
         let kindString = try container.decodeIfPresent(String.self, forKey: .kind)
         self.kind = kindString.flatMap { PermissionOptionKind(rawValue: $0) }
@@ -563,10 +596,11 @@ public struct PermissionOption: Codable, Hashable, Sendable, Identifiable {
 
     public func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
-        try container.encode(id, forKey: .id)
-        try container.encodeIfPresent(title, forKey: .title)
+        try container.encode(id, forKey: .optionId)
+        try container.encodeIfPresent(title, forKey: .name)
         try container.encodeIfPresent(description, forKey: .description)
         try container.encodeIfPresent(isDestructive, forKey: .isDestructive)
+        try container.encodeIfPresent(kind, forKey: .kind)
     }
 }
 
@@ -610,19 +644,50 @@ public struct AvailableCommandsUpdate: Codable, Hashable, Sendable {
 
 public struct AvailableCommand: Codable, Hashable, Sendable {
     public let name: String
+    /// - Important: Required by the ACP specification.
     public let description: String?
     public let input: AvailableCommandInput?
 }
 
 public struct AvailableCommandInput: Codable, Hashable, Sendable {
+    /// - Important: Required by the ACP specification.
     public let hint: String?
 }
 
 // MARK: - Mode Update
 
-public struct CurrentModeUpdate: Codable, Hashable, Sendable {
-    public let currentMode: String
+public struct CurrentModeUpdate: Hashable, Sendable {
+    public let currentModeId: String
     public let modes: [SessionMode]?
+
+    public init(currentModeId: String, modes: [SessionMode]? = nil) {
+        self.currentModeId = currentModeId
+        self.modes = modes
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case currentModeId, currentMode, modeId, modes
+    }
+}
+
+extension CurrentModeUpdate: Decodable {
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        // Prefer spec-compliant "currentModeId", fall back to "currentMode" or "modeId"
+        currentModeId = try container.decodeIfPresent(String.self, forKey: .currentModeId)
+            ?? container.decodeIfPresent(String.self, forKey: .currentMode)
+            ?? container.decodeIfPresent(String.self, forKey: .modeId)
+            ?? ""
+        modes = try container.decodeIfPresent([SessionMode].self, forKey: .modes)
+    }
+}
+
+extension CurrentModeUpdate: Encodable {
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(currentModeId, forKey: .currentModeId)
+        try container.encodeIfPresent(modes, forKey: .modes)
+    }
 }
 
 // MARK: - Config Options Update

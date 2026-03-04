@@ -112,11 +112,13 @@ public struct AudioContent: Codable, Hashable, Sendable {
 public struct ResourceContent: Codable, Hashable, Sendable {
     public let type: String
     public let resource: EmbeddedResource
+    public let annotations: Annotations?
     public let _meta: Value?
 
-    public init(resource: EmbeddedResource, _meta: Value? = nil) {
+    public init(resource: EmbeddedResource, annotations: Annotations? = nil, _meta: Value? = nil) {
         self.type = "resource"
         self.resource = resource
+        self.annotations = annotations
         self._meta = _meta
     }
 }
@@ -126,18 +128,21 @@ public struct EmbeddedResource: Codable, Hashable, Sendable {
     public let mimeType: String?
     public let text: String?
     public let blob: String?
+    public let annotations: Annotations?
 
-    public init(uri: String, mimeType: String? = nil, text: String? = nil, blob: String? = nil) {
+    public init(uri: String, mimeType: String? = nil, text: String? = nil, blob: String? = nil, annotations: Annotations? = nil) {
         self.uri = uri
         self.mimeType = mimeType
         self.text = text
         self.blob = blob
+        self.annotations = annotations
     }
 }
 
 public struct ResourceLinkContent: Codable, Hashable, Sendable {
     public let type: String
     public let uri: String
+    /// - Important: Required by the ACP specification.
     public let name: String?
     public let description: String?
     public let mimeType: String?
