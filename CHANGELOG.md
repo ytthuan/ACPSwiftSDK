@@ -10,6 +10,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - _None yet._
 
+## [0.2.0] - 2026-03-07
+
+### Added
+- **`exitPlanMode.request` handler** — Agent → Client method for plan approval dialog (Copilot CLI v0.0.412+). New types: `ExitPlanMode`, `PlanAction`.
+- **MCP Elicitation handler** — Agent → Client method for structured form input / ask_user forms (Copilot CLI v0.0.421+). New types: `Elicitation`, `ElicitationAction`.
+- **`tools/list` client method** — Query available tools from the agent. New types: `ToolsList`, `ToolInfo`.
+- **`BridgeAPIClient`** — HTTP client actor for acp-ws-bridge REST API (v0.2.0 compatible). Supports all 10 endpoints: health, copilot info, copilot usage, sessions, session commands, stats, history sessions, history turns, history stats.
+- **Bridge response models** — `BridgeHealth`, `CopilotInfo`, `CopilotUsage`, `BridgeSession`, `BridgeCommand`, `BridgeStats`, `HistorySession`, `HistoryTurn`, `HistoryStats`.
+- **`SessionContext`** — added to `SessionSummary` for session context in `session/list` (Copilot CLI v0.0.422+).
+- **v0.2.0 feature tests** — encoding/decoding and handler integration tests for all new types.
+
+### Changed
+- **Copilot CLI 1.0 GA compatibility** — verified and documented support for Copilot CLI v1.0.x (GA since v0.0.418).
+
 ## [0.1.3] - 2026-03-04
 
 ### Added

@@ -312,6 +312,33 @@ public struct SessionSummary: Codable, Hashable, Sendable {
     public let title: String?
     public let createdAt: String?
     public let updatedAt: String?
+    public let context: SessionContext?
+
+    public init(
+        sessionId: String,
+        title: String? = nil,
+        createdAt: String? = nil,
+        updatedAt: String? = nil,
+        context: SessionContext? = nil
+    ) {
+        self.sessionId = sessionId
+        self.title = title
+        self.createdAt = createdAt
+        self.updatedAt = updatedAt
+        self.context = context
+    }
+}
+
+public struct SessionContext: Codable, Hashable, Sendable {
+    public let cwd: String?
+    public let repository: String?
+    public let branch: String?
+
+    public init(cwd: String? = nil, repository: String? = nil, branch: String? = nil) {
+        self.cwd = cwd
+        self.repository = repository
+        self.branch = branch
+    }
 }
 
 // MARK: - Session/Delete (RFD)
@@ -331,6 +358,42 @@ public enum SessionDelete: ACPMethod {
 
     public struct Result: Codable, Hashable, Sendable {
         public init() {}
+    }
+}
+
+// MARK: - Tools List
+
+/// `tools/list` — list available tools in the current session.
+public enum ToolsList: ACPMethod {
+    public static let name = "tools/list"
+
+    public struct Parameters: Codable, Hashable, Sendable {
+        public let sessionId: String?
+
+        public init(sessionId: String? = nil) {
+            self.sessionId = sessionId
+        }
+    }
+
+    public struct Result: Codable, Hashable, Sendable {
+        public let tools: [ToolInfo]
+
+        public init(tools: [ToolInfo]) {
+            self.tools = tools
+        }
+    }
+}
+
+public struct ToolInfo: Codable, Hashable, Sendable, Identifiable {
+    public var id: String { name }
+    public let name: String
+    public let description: String?
+    public let inputSchema: Value?
+
+    public init(name: String, description: String? = nil, inputSchema: Value? = nil) {
+        self.name = name
+        self.description = description
+        self.inputSchema = inputSchema
     }
 }
 
@@ -708,6 +771,49 @@ public enum ReleaseTerminal: ACPMethod {
 
     public struct Result: Codable, Hashable, Sendable {
         public init() {}
+    }
+}
+
+// MARK: - Exit Plan Mode (Agent → Client)
+
+/// `exitPlanMode.request` — agent asks the client to exit plan mode.
+public enum ExitPlanMode: ACPMethod {
+    public static let name = "exitPlanMode.request"
+
+    public struct Parameters: Codable, Hashable, Sendable {
+        public let summary: String
+        public let actions: [PlanAction]?
+        public let recommendedAction: String?
+
+        public init(summary: String, actions: [PlanAction]? = nil, recommendedAction: String? = nil) {
+            self.summary = summary
+            self.actions = actions
+            self.recommendedAction = recommendedAction
+        }
+    }
+
+    public struct Result: Codable, Hashable, Sendable {
+        public let selectedAction: String
+        public let feedback: String?
+
+        public init(selectedAction: String, feedback: String? = nil) {
+            self.selectedAction = selectedAction
+            self.feedback = feedback
+        }
+    }
+}
+
+/// A single action the user can take when exiting plan mode.
+public struct PlanAction: Codable, Hashable, Sendable, Identifiable {
+    public var id: String { actionId }
+    public let actionId: String
+    public let label: String?
+    public let description: String?
+
+    public init(actionId: String, label: String? = nil, description: String? = nil) {
+        self.actionId = actionId
+        self.label = label
+        self.description = description
     }
 }
 

@@ -4,14 +4,12 @@
 
 A Swift 6+ SDK for the [Agent Client Protocol (ACP)](https://agentclientprotocol.com) — the open protocol for communication between AI coding agents and their clients.
 
-## Latest Update (v0.1.3)
+## Latest Update (v0.2.0)
 
-- Improved ACP spec compliance (second pass):
-  - updated spec field names (`currentModeId`, permission option encoding fields)
-  - added `line` to tool call locations
-  - added `annotations` support for embedded/resource content
-  - added 6 additional spec compliance tests
-- v0.1.2 recap: added `authenticate`, fs/terminal client methods, broader schema coverage, and malformed terminal request safety hardening.
+- **Copilot CLI 1.0 GA compatibility** — verified support for Copilot CLI v1.0.x (GA since v0.0.418).
+- **`exitPlanMode.request` and MCP elicitation handlers** — Agent → Client methods for plan approval dialogs and structured form input.
+- **`tools/list` client method** — query available tools from the agent.
+- **New `BridgeAPIClient`** — HTTP client actor for acp-ws-bridge REST API: health, copilot info/usage, sessions, history, stats.
 - See [CHANGELOG.md](CHANGELOG.md) for full release history.
 
 ## Features
@@ -21,6 +19,7 @@ A Swift 6+ SDK for the [Agent Client Protocol (ACP)](https://agentclientprotocol
 - **Pluggable transports** — WebSocket (with TLS/self-signed cert support), in-memory (for testing)
 - **Swift 6 strict concurrency** — actor-based client, `Sendable` types throughout
 - **Streaming updates** — receive thought chunks, tool calls, agent messages via async handlers
+- **Bridge REST API client** — query Copilot CLI info, usage analytics, session history via acp-ws-bridge
 - **Minimal dependencies** — only [swift-log](https://github.com/apple/swift-log)
 
 ## Requirements
@@ -93,6 +92,36 @@ print("\nStop reason: \(result.stopReason?.rawValue ?? "unknown")")
 await client.disconnect()
 ```
 
+## Bridge REST API
+
+```swift
+import ACP
+
+// Connect to the acp-ws-bridge REST API
+let bridge = BridgeAPIClient(
+    baseURL: URL(string: "https://localhost:8766")!,
+    trustSelfSigned: true
+)
+
+// Check bridge health and Copilot CLI version
+let health = try await bridge.health()
+print("Bridge v\(health.version), CLI v\(health.copilotCliVersion ?? "unknown")")
+
+// Get Copilot CLI capabilities
+let info = try await bridge.copilotInfo()
+print("GA: \(info.ga), Features: \(info.features)")
+
+// Browse session history
+let sessions = try await bridge.historySessions()
+for session in sessions {
+    print("\(session.summary ?? "Untitled") — \(session.turnCount) turns")
+}
+
+// Get usage analytics
+let stats = try await bridge.historyStats()
+print("Total sessions: \(stats.totalSessions), This week: \(stats.sessionsThisWeek)")
+```
+
 ## Architecture
 
 ```
@@ -103,10 +132,10 @@ await client.disconnect()
 │  │  Models   │  │  Transport  │  │  Client        │  │
 │  │           │  │             │  │                │  │
 │  │  JSON-RPC │  │  Protocol   │  │  ACPClient     │  │
-│  │  Content  │  │  WebSocket  │  │  (actor)       │  │
-│  │  Session  │  │  InMemory   │  │  - connect()   │  │
-│  │  Updates  │  │  NDJSON     │  │  - prompt()    │  │
-│  │  Tools    │  │             │  │  - handlers    │  │
+│  │  Content  │  │  WebSocket  │  │  BridgeAPI     │  │
+│  │  Session  │  │  InMemory   │  │  (actors)      │  │
+│  │  Updates  │  │  NDJSON     │  │  - connect()   │  │
+│  │  Tools    │  │             │  │  - prompt()    │  │
 │  └──────────┘  └─────────────┘  └────────────────┘  │
 └──────────────────────────────────────────────────────┘
 ```
@@ -118,7 +147,7 @@ await client.disconnect()
 | **Base/** | JSON-RPC 2.0 types (`JSONRPCID`, `Value`, `RawMessage`), error types |
 | **Models/** | ACP protocol models — `ContentBlock`, `SessionUpdate`, `ToolCall`, `ConfigOption` |
 | **Transport/** | `ACPTransport` protocol, `WebSocketTransport`, `InMemoryTransport`, `NDJSONCodec` |
-| **Client/** | `ACPClient` actor — connection management, request/response correlation, handler dispatch |
+| **Client/** | `ACPClient` actor — ACP connection, `BridgeAPIClient` actor — bridge REST API |
 
 ## API Reference
 
@@ -152,6 +181,11 @@ public actor ACPClient {
     func onSessionUpdate(_ handler: @escaping @Sendable (String, SessionUpdate) async -> Void)
     func onRawNotification(_ method: String, handler: @escaping @Sendable (Data) async throws -> Void)
     func onPermissionRequest(_ handler: @escaping @Sendable (JSONRPCID, RequestPermission.Parameters) async throws -> RequestPermission.Result)
+    func onExitPlanModeRequest(_ handler: @escaping @Sendable (JSONRPCID, ExitPlanMode.Parameters) async throws -> ExitPlanMode.Result)
+    func onElicitationRequest(_ handler: @escaping @Sendable (JSONRPCID, Elicitation.Parameters) async throws -> Elicitation.Result)
+
+    // Tools
+    func listTools(sessionId: String?) async throws -> ToolsList.Result
 }
 ```
 
@@ -213,6 +247,7 @@ The test suite includes:
 - **EndToEndTests** — Full conversation flow with mock ACP server
 - **SpecComplianceTests** — ACP schema/encoding compliance checks
 - **TerminalHandlerMissingParamsTests** — malformed terminal request regression coverage
+- **V020FeatureTests** — v0.2.0 model encoding/decoding, bridge model tests, handler integration
 
 ## Releasing
 
@@ -246,6 +281,9 @@ This SDK implements the [Agent Client Protocol](https://agentclientprotocol.com)
 | `session/set_config_option` | Client → Agent | Change model/mode/thinking config |
 | `session/update` | Agent → Client | Stream session updates (10 types) |
 | `session/request_permission` | Agent → Client | Ask user to approve tool execution |
+| `exitPlanMode.request` | Agent → Client | Plan approval dialog |
+| `elicitation/create` | Agent → Client | Structured form input |
+| `tools/list` | Client → Agent | Query available tools |
 
 ## License
 

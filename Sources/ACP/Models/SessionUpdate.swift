@@ -609,6 +609,52 @@ public enum PermissionOutcome: String, Codable, Hashable, Sendable {
     case cancelled
 }
 
+// MARK: - Elicitation / Ask User (Agent → Client)
+
+/// MCP Elicitation protocol — structured ask-user forms.
+/// The agent sends `elicitation/create` to request structured input from the user.
+/// - Note: Copilot CLI extension (v0.0.421+), not part of the core ACP specification.
+public enum Elicitation: ACPMethod {
+    public static let name = "elicitation/create"
+
+    public struct Parameters: Codable, Hashable, Sendable {
+        public let sessionId: String?
+        public let message: String
+        public let requestedSchema: Value?
+        public let _meta: Value?
+
+        public init(sessionId: String? = nil, message: String, requestedSchema: Value? = nil, _meta: Value? = nil) {
+            self.sessionId = sessionId
+            self.message = message
+            self.requestedSchema = requestedSchema
+            self._meta = _meta
+        }
+
+        private enum CodingKeys: String, CodingKey {
+            case sessionId
+            case message
+            case requestedSchema
+            case _meta
+        }
+    }
+
+    public struct Result: Codable, Hashable, Sendable {
+        public let action: ElicitationAction
+        public let content: Value?
+
+        public init(action: ElicitationAction, content: Value? = nil) {
+            self.action = action
+            self.content = content
+        }
+    }
+}
+
+public enum ElicitationAction: String, Codable, Hashable, Sendable {
+    case accept
+    case decline
+    case cancel
+}
+
 // MARK: - Plan Update
 
 public struct PlanUpdate: Codable, Hashable, Sendable {

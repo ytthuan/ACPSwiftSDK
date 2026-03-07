@@ -198,6 +198,15 @@ public actor ACPClient {
         return try await sendRequest(method: SessionDelete.name, params: params)
     }
 
+    /// List available tools in the current session.
+    public func listTools(sessionId: String? = nil) async throws -> ToolsList.Result {
+        let sid = sessionId ?? self.sessionId
+        return try await sendRequest(
+            method: ToolsList.name,
+            params: ToolsList.Parameters(sessionId: sid)
+        )
+    }
+
     /// Authenticate with the agent using a specific auth method.
     public func authenticate(methodId: String) async throws -> Authenticate.Result {
         try await sendRequest(method: Authenticate.name, params: Authenticate.Parameters(methodId: methodId))
@@ -234,6 +243,21 @@ public actor ACPClient {
             let request = try decoder.decode(JSONRPCRequest<RequestPermission.Parameters>.self, from: data)
             guard let params = request.params else {
                 throw ACPError.decodingError("Missing params in permission request")
+            }
+            let result = try await handler(id, params)
+            let response = JSONRPCResponse(id: id, result: result)
+            return try JSONEncoder().encode(response)
+        }
+    }
+
+    /// Register a typed elicitation request handler.
+    /// The agent sends `elicitation/create` to request structured input from the user.
+    public func onElicitationRequest(_ handler: @escaping @Sendable (JSONRPCID, Elicitation.Parameters) async throws -> Elicitation.Result) {
+        onRequest(Elicitation.name) { id, data in
+            let decoder = JSONDecoder()
+            let request = try decoder.decode(JSONRPCRequest<Elicitation.Parameters>.self, from: data)
+            guard let params = request.params else {
+                throw ACPError.decodingError("Missing params in elicitation request")
             }
             let result = try await handler(id, params)
             let response = JSONRPCResponse(id: id, result: result)
@@ -327,6 +351,19 @@ public actor ACPClient {
                 throw ACPError.decodingError("Missing params in write_text_file request")
             }
             let result = try await handler(params)
+            let response = JSONRPCResponse(id: id, result: result)
+            return try codec.encode(response)
+        }
+    }
+
+    /// Register a handler for `exitPlanMode.request` requests from the agent.
+    public func onExitPlanModeRequest(_ handler: @escaping @Sendable (JSONRPCID, ExitPlanMode.Parameters) async throws -> ExitPlanMode.Result) {
+        onRequest(ExitPlanMode.name) { [codec] id, data in
+            let wrapper = try JSONDecoder().decode(JSONRPCRequest<ExitPlanMode.Parameters>.self, from: data)
+            guard let params = wrapper.params else {
+                throw ACPError.decodingError("Missing params in exitPlanMode.request")
+            }
+            let result = try await handler(id, params)
             let response = JSONRPCResponse(id: id, result: result)
             return try codec.encode(response)
         }
